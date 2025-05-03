@@ -1,4 +1,5 @@
-# Rule-Based Expert System using Certainty Factor
+import tkinter as tk
+from tkinter import messagebox
 
 # Define rules with Certainty Factors
 rules = {
@@ -22,15 +23,6 @@ rules = {
     ]
 }
 
-# Collect user symptoms
-print("Enter your symptoms one by one. Type 'done' when finished.")
-user_symptoms = []
-while True:
-    symptom = input("Symptom: ").strip().lower()
-    if symptom == 'done':
-        break
-    user_symptoms.append(symptom)
-
 # Calculate Certainty Factor for each diagnosis
 def calculate_cf(disease, symptoms):
     total_cf = 0
@@ -39,21 +31,64 @@ def calculate_cf(disease, symptoms):
             total_cf += rule_cf * (1 - total_cf)  # CF combination formula
     return round(total_cf, 3)
 
-# Diagnose
-results = {}
-for disease in rules:
-    cf = calculate_cf(disease, user_symptoms)
-    results[disease] = cf
+# When "Diagnose" button is clicked
+def diagnose():
+    selected_symptoms = []
+    for symptom, var in symptom_vars.items():
+        if var.get() == 1:
+            selected_symptoms.append(symptom)
 
-# Sort and display
-sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
-print("\nDiagnosis Results:")
-for disease, cf in sorted_results:
-    print(f"{disease}: CF = {cf}")
+    if not selected_symptoms:
+        messagebox.showwarning("No symptoms", "Please select at least one symptom.")
+        return
 
-# Suggest likely diagnosis
-likely = sorted_results[0]
-if likely[1] > 0:
-    print(f"\nMost likely condition: {likely[0]} with confidence {likely[1]}")
-else:
-    print("\nNo likely condition found based on input.")
+    results = {}
+    for disease in rules:
+        cf = calculate_cf(disease, selected_symptoms)
+        results[disease] = cf
+
+    sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
+
+    result_text = "Diagnosis Results:\n"
+    for disease, cf in sorted_results:
+        result_text += f"{disease}: CF = {cf}\n"
+
+    likely = sorted_results[0]
+    if likely[1] > 0:
+        result_text += f"\nMost likely condition: {likely[0]} with confidence {likely[1]}"
+    else:
+        result_text += "\nNo likely condition found based on input."
+
+    result_label.config(text=result_text)
+
+#__________________________________GUI Part__________________________________#
+
+window = tk.Tk()
+window.title("EEM348 Rule-Based Expert System")
+window.geometry("400x600")
+window.configure(bg="lightblue")
+
+tk.Label(window, text="Select your symptoms:", bg="lightblue", font=("Arial", 14)).pack(pady=10)
+
+# Symptom checkboxes
+symptom_vars = {}
+symptom_list = [
+    'fever', 'cough', 'sneezing', 'runny nose', 
+    'headache', 'body ache', 'sore throat', 
+    'fatigue', 'itchy eyes'
+]
+
+for symptom in symptom_list:
+    var = tk.IntVar()
+    cb = tk.Checkbutton(window, text=symptom.capitalize(), variable=var, bg="lightblue", font=("Arial", 12))
+    cb.pack(anchor='w', padx=20)
+    symptom_vars[symptom] = var
+
+# Diagnose button
+tk.Button(window, text="Diagnose", command=diagnose, font=("Arial", 14), bg="navy", fg="white").pack(pady=20)
+
+# Result label
+result_label = tk.Label(window, text="", bg="lightblue", font=("Arial", 12), justify="left")
+result_label.pack(padx=10, pady=10)
+
+window.mainloop()
