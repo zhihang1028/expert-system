@@ -2,7 +2,10 @@
 
 ## Overview
 This project is a Job Suggestion Expert System built using Python and the `customtkinter` library. The system suggests suitable job roles based on user-defined skills and their confidence levels. It uses a set of predefined rules and conditions to evaluate the best job matches (currently only for engineering jobs).
-![Job Suggestion System Screenshot](images/screenshot.png)
+
+<div style="text-align: center;">
+    <img src="images/screenshot.png" alt="Job Suggestion System Screenshot" width="300"/>
+</div>
 
 ## Usage
 - **Select Skills**: Check the boxes next to the skills.
