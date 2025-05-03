@@ -1,9 +1,9 @@
-import tkinter as tk
+import customtkinter as ctk
 from tkinter import messagebox
 
 # Define rules with Certainty Factors
 rules = {
-    'Cold': [
+    'Cold': [   # Assign CF value of 1.0 for all diseases.
         ('cough', 0.6),
         ('sneezing', 0.8),
         ('runny nose', 0.9),
@@ -33,20 +33,13 @@ def calculate_cf(disease, symptoms):
 
 # When "Diagnose" button is clicked
 def diagnose():
-    selected_symptoms = []
-    for symptom, var in symptom_vars.items():
-        if var.get() == 1:
-            selected_symptoms.append(symptom)
+    selected_symptoms = [symptom for symptom, var in symptom_vars.items() if var.get() == 1]
 
     if not selected_symptoms:
         messagebox.showwarning("No symptoms", "Please select at least one symptom.")
         return
 
-    results = {}
-    for disease in rules:
-        cf = calculate_cf(disease, selected_symptoms)
-        results[disease] = cf
-
+    results = {disease: calculate_cf(disease, selected_symptoms) for disease in rules}
     sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
 
     result_text = "Diagnosis Results:\n"
@@ -59,16 +52,31 @@ def diagnose():
     else:
         result_text += "\nNo likely condition found based on input."
 
-    result_label.config(text=result_text)
+    result_label.configure(text=result_text)
 
-#__________________________________GUI Part__________________________________#
+# Clear selections
+def clear_selection():
+    for var in symptom_vars.values():
+        var.set(0)
+    result_label.configure(text="")
 
-window = tk.Tk()
-window.title("EEM348 Rule-Based Expert System")
+# Create the main window
+ctk.set_appearance_mode("dark")  # Options: "light", "dark", "system"
+ctk.set_default_color_theme("blue")  # Options: "blue", "green", "dark-blue", etc.
+
+window = ctk.CTk()
+window.title("Medical Diagnosis Expert System")
 window.geometry("400x600")
-window.configure(bg="lightblue")
 
-tk.Label(window, text="Select your symptoms:", bg="lightblue", font=("Arial", 14)).pack(pady=10)
+# Title Label
+title_label = ctk.CTkLabel(window, text="Medical Diagnosis Expert System", font=("Arial", 16, "bold"))
+title_label.pack(pady=20)
+
+# Symptom selection frame
+symptom_frame = ctk.CTkFrame(window)
+symptom_frame.pack(pady=10)
+
+ctk.CTkLabel(symptom_frame, text="Select your symptoms:", font=("Arial", 14)).pack(anchor='w', padx=10)
 
 # Symptom checkboxes
 symptom_vars = {}
@@ -79,16 +87,21 @@ symptom_list = [
 ]
 
 for symptom in symptom_list:
-    var = tk.IntVar()
-    cb = tk.Checkbutton(window, text=symptom.capitalize(), variable=var, bg="lightblue", font=("Arial", 12))
-    cb.pack(anchor='w', padx=20)
+    var = ctk.IntVar()
+    cb = ctk.CTkCheckBox(symptom_frame, text=symptom.capitalize(), variable=var)
+    cb.pack(anchor='w', padx=20, pady=5)
     symptom_vars[symptom] = var
 
-# Diagnose button
-tk.Button(window, text="Diagnose", command=diagnose, font=("Arial", 14), bg="navy", fg="white").pack(pady=20)
+# Diagnose and Clear buttons
+button_frame = ctk.CTkFrame(window)
+button_frame.pack(pady=20)
+
+ctk.CTkButton(button_frame, text="Diagnose", command=diagnose).pack(side='left', padx=10, pady=5)
+ctk.CTkButton(button_frame, text="Clear", command=clear_selection).pack(side='right', padx=10)
 
 # Result label
-result_label = tk.Label(window, text="", bg="lightblue", font=("Arial", 12), justify="left")
+result_label = ctk.CTkLabel(window, text="", font=("Arial", 12), justify="left")
 result_label.pack(padx=10, pady=10)
 
+# Start the GUI event loop
 window.mainloop()
