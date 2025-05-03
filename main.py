@@ -1,121 +1,161 @@
 import customtkinter as ctk
 
-# Define rules with Certainty Factors
+# Define the rules with certainty factors for various traits related to jobs
 rules = {
-    'Cold': [
-        ('cough', 0.8),
-        ('sore throat', 0.7),
-        ('sneezing', 0.9),
-        ('body ache', 0.1),
-        ('runny nose', 0.8)
+    'Mechanical Engineer': [
+        ('mechanical skills', 0.9),
+        ('problem solving', 0.8),
+        ('creativity', 0.7),
+        ('attention to detail', 0.6)
     ],
-    'Flu': [
-        ('fever', 0.9),
-        ('body ache', 0.8),
-        ('fatigue', 0.7),
-        ('cough', 0.8),
-        ('sneezing', 0.4),
-        ('headache', 0.8),
-        ('runny nose', 0.5)
+    'Software Engineer': [
+        ('programming', 0.9),
+        ('problem solving', 0.9),
+        ('creativity', 0.8),
+        ('collaboration', 0.7)
     ],
-    'Allergy': [
-        ('sneezing', 0.8),
-        ('runny nose', 0.7),
-        ('itchy eyes', 0.9),
-        ('rash', 0.8),
-        ('persistent cough', 0.3),
-        ('nausea', 0.2)
+    'Electrical Engineer': [
+        ('circuit design', 0.9),
+        ('analytical thinking', 0.8),
+        ('problem solving', 0.8),
+        ('teamwork', 0.7)
     ],
-    'Measles': [
-        ('fever', 0.9),
-        ('cough', 0.7),
-        ('rash', 0.85)
+    'Civil Engineer': [
+        ('project management', 0.8),
+        ('problem solving', 0.8),
+        ('creativity', 0.7),
+        ('communication', 0.6)
     ],
-    'Tuberculosis': [
-        ('persistent cough', 0.9),
-        ('fever', 0.6),
-        ('weight loss', 0.8),
-        ('night sweats', 0.7)
+    'Chemical Engineer': [
+        ('chemical analysis', 0.9),
+        ('problem solving', 0.8),
+        ('teamwork', 0.7),
+        ('attention to detail', 0.6)
     ],
-    'Strep Throat': [
-        ('sore throat', 0.9),
-        ('fever', 0.8),
-        ('swollen lymph nodes', 0.7)
+    'Mechatronics Engineer': [
+        ('programming', 0.9),
+        ('mechanical skills', 0.9),
+        ('problem solving', 0.8),
+        ('creativity', 0.7),
+        ('circuit design', 0.8)
     ],
-    'Gastroenteritis': [
-        ('nausea', 0.8),
-        ('vomiting', 0.7),
-        ('diarrhea', 0.9),
-        ('fever', 0.6)
-    ],
-    'Rheumatoid Arthritis': [
-        ('joint pain', 0.8),
-        ('fatigue', 0.6),
-        ('sore throat', 0.5)
-    ],
-    'Migraine': [
-        ('severe headache', 0.9),
-        ('nausea', 0.8),
-        ('sensitivity to light', 0.7),
-        ('fatigue', 0.6)
-    ],
-    'COVID-19': [
-        ('fever', 0.8),
-        ('body ache', 0.5),
-        ('fatigue', 0.5),
-        ('cough', 0.8),
-        ('shortness of breath', 0.6),
-        ('headache', 0.5),
-        ('runny nose', 0.5),
-        ('loss of taste', 0.6),
+    'Environmental Engineer': [
+        ('environmental science', 0.9),
+        ('problem solving', 0.8),
+        ('analytical thinking', 0.7),
+        ('communication', 0.6)
     ]
 }
 
-# Calculate Certainty Factor for each diagnosis
-def calculate_cf(disease, user_symptoms):
+# Define conditions for each job
+conditions = {
+    'Mechatronics Engineer': {
+        'and': ['mechanical skills', 'programming'],
+        'or': ['creativity', 'teamwork']
+    },
+}
+
+def combine_cf(job, user_skills):
     total_cf = 0
-    for symptom, user_cf in user_symptoms:
-        for rule_symptom, rule_cf in rules[disease]:
-            if symptom == rule_symptom:
+    for skill, user_cf in user_skills:
+        for rule_trait, rule_cf in rules[job]:
+            if skill == rule_trait:
                 adjusted_cf = user_cf * rule_cf
-                total_cf += adjusted_cf * (1 - total_cf)  # CF combination formula
+                total_cf += adjusted_cf * (1 - total_cf)  # applying the certainty factor combination formula
+    return total_cf
+
+# Function to calculate the certainty factor for each job
+def calculate_cf(job, user_skills):
+    total_cf = 0
+    if job in conditions:
+        job_conditions = conditions[job]
+
+        # Handle "and" conditions
+        if 'and' in job_conditions:
+            and_cf = calculate_and_cf(user_skills, job_conditions['and'])
+            user_skills.append(and_cf)  # add the minimum cf value (and)
+
+            for trait in conditions[job]['and']:    # remove both cf values (and)
+                for i in range(len(user_skills)):
+                    if user_skills[i][0] == trait:
+                        user_skills.pop(i)
+                        break
+
+            total_cf = combine_cf(job, user_skills)
+
+        # Handle "or" conditions
+        if 'or' in job_conditions:
+            or_cf = calculate_or_cf(user_skills, job_conditions['or'])
+            user_skills.append(or_cf)
+
+            for trait in conditions[job]['or']:
+                for i in range(len(user_skills)):
+                    if user_skills[i][0] == trait:
+                        user_skills.pop(i)
+                        break
+
+            total_cf = combine_cf(job, user_skills)
+
+    else:
+        # Normal calculation for other jobs
+        total_cf = combine_cf(job, user_skills)
+
     return round(total_cf, 3)
 
-# Detailed results tracking
+def calculate_and_cf(user_skills, required_skills):
+    # Create a dictionary of skills and their confidence factors
+    skill_cfs = {skill: user_cf for skill, user_cf in user_skills if skill in required_skills}
+    if len(skill_cfs) == len(required_skills):  # All required skills are present
+        # Find the skill with the minimum confidence factor
+        min_skill = min(skill_cfs, key=skill_cfs.get)  # Get the skill with the minimum CF
+        return (min_skill, skill_cfs[min_skill])  # Return the skill and its CF as a tuple
+    return ("", 0)  # Return a tuple indicating incomplete skills
+
+def calculate_or_cf(user_skills, optional_skills):
+    # Create a dictionary of skills and their confidence factors
+    skill_cfs = {skill: user_cf for skill, user_cf in user_skills if skill in optional_skills}
+    if len(skill_cfs) == len(optional_skills):  # All required skills are present
+        # Find the skill with the maximum confidence factor
+        max_skill = max(skill_cfs, key=skill_cfs.get)  # Get the skill with the maximum CF
+        return (max_skill, skill_cfs[max_skill])  # Return the skill and its CF as a tuple
+    return ("", 0)  # Return a tuple indicating incomplete skills
+
+# Variable to track detailed results
 detailed_results_shown = False
 detailed_results_text = ""
 
-# Diagnose button
-def diagnose():
-    global detailed_results_text  # Make this variable global
-    user_symptoms = []
-    for symptom, var in symptom_vars.items():
+# Function to handle the job suggestion process
+def suggest_job():
+    global detailed_results_text  # declare this variable as global
+    user_traits = []
+    for trait, var in trait_vars.items():
         if var.get() == 1:
-            cf = float(symptom_sliders[symptom].get())  # Get value from the slider
-            user_symptoms.append((symptom, cf))
+            cf = float(trait_sliders[trait].get())  # retrieve the value from the slider
+            user_traits.append((trait, cf))
 
-    if not user_symptoms:
-        show_error_message("Please select at least one symptom.")
+    if not user_traits:
+        show_error_message("Please select at least one skill.")
         return
 
-    results = {disease: calculate_cf(disease, user_symptoms) for disease in rules}
+    results = {job: calculate_cf(job, user_traits) for job in rules}
     sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
 
-    # Get the most likely condition
+    # Identify the most likely job
     likely = sorted_results[0]
-    result_text = f"Most likely condition: {likely[0]} with confidence {likely[1]}\n"
+    result_text = f"Most suitable job: {likely[0]} with confidence {likely[1]}\n"
 
-    # Prepare detailed results text
+    # Prepare the detailed results text
     detailed_results_text = "\n"
-    for disease, cf in sorted_results:
-        detailed_results_text += f"{disease}: CF = {cf}\n"
+    for job, cf in sorted_results:
+        detailed_results_text += f"{job}: CF = {cf}\n"
 
-    # Show only the most likely condition initially
+    # Display only the most likely job initially
     result_label.configure(text=result_text)
     result_label.pack(pady=0)
-    clickable_text.configure(text="Show More")  # Set initial text for clickable label
-    clickable_text.pack(pady=5)  # Show the clickable text
+    clickable_text.configure(text="Show More")  # set initial text for the clickable
+    clickable_text.pack(pady=5)  # display the clickable text
 
+# Function to show an error message in a new window
 def show_error_message(message):
     error_window = ctk.CTk()
     error_window.title("Warning")
@@ -125,142 +165,179 @@ def show_error_message(message):
     error_label = ctk.CTkLabel(error_window, text=message, font=("Arial", 12), justify="center")
     error_label.pack(pady=20)
 
-    # Create a close button
+    # Create a button to close the error window
     close_button = ctk.CTkButton(error_window, text="Close", command=error_window.destroy)
     close_button.pack(pady=5)
 
     error_window.mainloop()
 
-# Clear selections
+# Function to clear all selections
 def clear_selection():
-    for var in symptom_vars.values():
+    for var in trait_vars.values():
         var.set(0)
     # Shift focus away from the entry field
     button_frame.focus_set()
-    for entry in symptom_entries.values():
+    for entry in trait_entries.values():
         entry.configure(state='normal')
         entry.delete(0, 'end')
         entry.configure(placeholder_text="CF (e.g. 0.50)")
         entry.configure(state='disabled')
-    for symptom, slider in symptom_sliders.items():
+    for trait, slider in trait_sliders.items():
         slider.set(0.5)
         slider.configure(state="disabled")
     result_label.configure(text="")
     clickable_text.configure(text="")
 
-# Clickable text for showing more results
+# Function to show detailed results when clicked
 def show_detailed_results(event=None):
-    detailed_window = ctk.CTk()     # Window Pop out
-    detailed_window.title("Detailed Diagnosis Results")
+    detailed_window = ctk.CTk()  # Create a new window for detailed results
+    detailed_window.title("Detailed Job Suggestion Results")
     detailed_window.geometry("300x350")
 
-    ctk.CTkLabel(detailed_window, text="Diagnosis Results:", font=("Arial", 12)).pack(anchor='center', padx=10, pady=(20, 0))
+    ctk.CTkLabel(detailed_window, text="Job Suggestion Results:", font=("Arial", 12)).pack(anchor='center', padx=10, pady=(20, 0))
 
-    # Create background frame
+    # Create a frame for the background
     frame = ctk.CTkFrame(detailed_window)
     frame.pack(padx=10, pady=0)
 
-    # Create label
+    # Create a label to display detailed results
     detailed_label = ctk.CTkLabel(frame, text=detailed_results_text, justify="left")
     detailed_label.pack(padx=10, pady=0, fill="both", expand=True)
 
-    # Close button
+    # Button to close the detailed results window
     close_button = ctk.CTkButton(detailed_window, text="Close", command=detailed_window.destroy)
     close_button.pack(pady=15)
 
     detailed_window.mainloop()
 
-# Help button function
+# Function to show help information with multiple pages
 def show_help():
-    help_window = ctk.CTk()  # Create a new window
+    help_window = ctk.CTk()  # Create a new window for help
     help_window.title("Help")
-    help_window.geometry("400x200")
+    help_window.geometry("400x300")
 
-    help_text = "\nThis is a medical diagnosis expert system.\n\n" \
-                "1. Select your symptoms from the list.\n" \
-                "2. Adjust the confidence levels using the sliders\n" \
-                "   from 0 (Definitely No) to 1 (Definitely Yes).\n" \
-                "3. Click 'Diagnose' to get the most likely condition.\n" \
-                "4. Use 'Clear' to reset your selections."
+    # List of help pages
+    help_pages = [
+        "This is a job suggestion expert system.\n\n"
+        "1. Select your skills from the list.\n"
+        "2. Adjust the confidence levels using the sliders\n"
+        "   from 0 (Definitely No) to 1 (Definitely Yes).\n"
+        "3. Click 'Suggest Job' to get the most suitable job.\n"
+        "4. Use 'Clear' to reset your selections.",
+        
+        "Tips for using the system:\n\n"
+        "1. Make sure to select at least one skill.\n"
+        "2. You can enter confidence factors manually or use the sliders.\n"
+        "3. The system will suggest jobs based on your input.\n"
+        "4. Once searching job, click 'Show More' to see detailed results.",
+        
+        "For further assistance:\n\n"
+        "1. Contact support at support@example.com.\n"
+        "2. Visit our website for more resources.\n"
+        "3. Follow us on social media for updates."
+    ]
 
-    help_label = ctk.CTkLabel(help_window, text=help_text, justify="left")
+    current_page = 0  # Track the current page index
+
+    # Function to update the help content
+    def update_help_content():
+        help_label.configure(text=help_pages[current_page])
+        prev_button.configure(state="normal" if current_page > 0 else "disabled")
+        next_button.configure(state="normal" if current_page < len(help_pages) - 1 else "disabled")
+
+    # Create a label to display help content
+    help_label = ctk.CTkLabel(help_window, text="", justify="left")
     help_label.pack(padx=10, pady=10)
 
+    # Create Previous and Next buttons
+    prev_button = ctk.CTkButton(help_window, text="Previous", command=lambda: change_page(-1))
+    prev_button.pack(side="left", padx=(10, 5), pady=10)
+
+    next_button = ctk.CTkButton(help_window, text="Next", command=lambda: change_page(1))
+    next_button.pack(side="right", padx=(5, 10), pady=10)
+
+    # Function to change the page
+    def change_page(direction):
+        nonlocal current_page
+        current_page += direction
+        update_help_content()
+
+    # Initialize the help content
+    update_help_content()
+
+    # Button to close the help window
     close_button = ctk.CTkButton(help_window, text="Close", command=help_window.destroy)
     close_button.pack(pady=10)
 
     help_window.mainloop()  # Start the event loop for the help window
 
-
-# Create the main window
+# Create the main application window
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 window = ctk.CTk()
-window.title("EEM348 Rule-Based Expert System")
+window.title("Job Suggestion Expert System")
 window.geometry("400x600")
 
-# Title Label
-title_label = ctk.CTkLabel(window, text="Medical Diagnosis Expert System", font=("Arial", 16, "bold"))
+# Title label for the application
+title_label = ctk.CTkLabel(window, text="Job Suggestion Expert System", font=("Arial", 16, "bold"))
 title_label.pack(pady=20)
 
-# Instruction
-ctk.CTkLabel(window, text="Select your symptoms and enter confidence levels:", font=("Arial", 14)).pack(anchor='w', padx=10, pady=(20, 0))
+# Instruction label for user guidance
+ctk.CTkLabel(window, text="Select your skills and enter confidence levels:", font=("Arial", 14)).pack(anchor='w', padx=10, pady=(20, 0))
 
-# Scrollable frame for symptoms
+# Create a scrollable frame for trait selection
 scrollable_frame = ctk.CTkScrollableFrame(window)
 scrollable_frame.pack(pady=10, fill="both", expand=True)
 
-# Symptom checkboxes and slider fields for confidence factors
-symptom_vars = {}
-symptom_sliders = {}
-symptom_entries = {}
-symptom_list = [
-    'fever', 'cough', 'sneezing', 'runny nose', 
-    'headache', 'sore throat', 'body ache', 
-    'fatigue', 'loss of taste', 'itchy eyes', 'nausea', 'vomiting', 
-    'diarrhea', 'joint pain', 'rash', 'shortness of breathe',
-    'persistent cough', 
-    'weight loss', 'night sweats', 'swollen lymph nodes', 
-    'sensitivity to light', 'severe headache'
+# Dictionaries to hold trait variables, sliders, and entries
+trait_vars = {}
+trait_sliders = {}
+trait_entries = {}
+trait_list = [
+    'mechanical skills', 'programming', 'circuit design', 
+    'project management', 'chemical analysis', 
+    'environmental science', 
+    'problem solving', 'creativity', 'teamwork', 
+    'communication', 'analytical thinking', 'attention to detail'
 ]
 
-# Function to enable/disable slider based on checkbox state
-def toggle_slider(symptom, var):
-    slider = symptom_sliders.get(symptom)  # Get the slider for the symptom
-    entry = symptom_entries.get(symptom)  # Get the entry for the symptom
+# Function to enable or disable the slider based on the checkbox state
+def toggle_slider(trait, var):
+    slider = trait_sliders.get(trait)  # Retrieve the slider for the trait
+    entry = trait_entries.get(trait)  # Retrieve the entry for the trait
     if slider:  # Check if the slider exists
-        if var.get() == 1:  # Checkbox is checked
+        if var.get() == 1:  # If the checkbox is checked
             slider.configure(state='normal')  # Enable the slider
             entry.configure(state='normal')  # Enable the entry
             entry.configure(text_color="white")  # Reset text color to normal
-        else:  # Checkbox is unchecked
+        else:  # If the checkbox is unchecked
             slider.configure(state='disabled')  # Disable the slider
-            entry.configure(text_color="darkgray")  # Change text color to light gray
+            entry.configure(text_color="darkgray") 
             entry.configure(state='disabled')  # Disable the entry field
-            #entry.delete(0, 'end')  # Clear the entry field
 
-for symptom in symptom_list:
+# Loop through the trait list to create checkboxes, sliders, and entries
+for trait in trait_list:
     var = ctk.IntVar()
-    cb = ctk.CTkCheckBox(scrollable_frame, text=symptom.capitalize(), variable=var,
-                          command=lambda symptom=symptom, var=var: toggle_slider(symptom, var))
+    cb = ctk.CTkCheckBox(scrollable_frame, text=trait.capitalize(), variable=var,
+                          command=lambda trait=trait, var=var: toggle_slider(trait, var))
     cb.pack(anchor='w', padx=20, pady=5)
-    symptom_vars[symptom] = var
+    trait_vars[trait] = var
 
-    # Slider for confidence factor
+    # Create a slider for the confidence factor
     slider = ctk.CTkSlider(scrollable_frame, from_=0, to=1, number_of_steps=100, state='disabled')  # Start disabled
     slider.pack(anchor='w', padx=20, pady=5)
-    symptom_sliders[symptom] = slider  # Store the slider in the dictionary
+    trait_sliders[trait] = slider  # Store the slider in the dictionary
 
-    # Entry for manual input of confidence factor
+    # Create an entry for manual input of the confidence factor
     entry = ctk.CTkEntry(scrollable_frame, placeholder_text="CF (e.g. 0.50)")
     entry.pack(anchor='w', padx=20, pady=5)
     entry.configure(state='disabled')
-    symptom_entries[symptom] = entry
+    trait_entries[trait] = entry
 
     # Update the slider when the entry is changed
-    def update_slider_from_entry(event, symptom=symptom, entry=entry, slider=slider, var=var):
-        if var.get() == 1:  # Checkbox is checked
+    def update_slider_from_entry(event, trait=trait, entry=entry, slider=slider, var=var):
+        if var.get() == 1:  # If the checkbox is checked
             try:
                 value = float(entry.get())
                 if 0 <= value <= 1:
@@ -277,7 +354,7 @@ for symptom in symptom_list:
                 button_frame.focus_set()
                 entry.delete(0, 'end')
                 entry.configure(placeholder_text="CF (e.g. 0.50)")
-        else:  # Checkbox is not checked
+        else:  # If the checkbox is not checked
             button_frame.focus_set()
             entry.delete(0, 'end')  # Clear the entry
             entry.configure(placeholder_text="CF (e.g. 0.50)")  # Set placeholder text
@@ -286,7 +363,7 @@ for symptom in symptom_list:
     entry.bind("<Return>", update_slider_from_entry)
 
     # Update the entry when the slider is moved
-    def update_entry(symptom=symptom, slider=slider, entry=entry, var=var):
+    def update_entry(trait=trait, slider=slider, entry=entry, var=var):
         if var.get() == 1:  # Only update if the checkbox is checked
             entry.delete(0, 'end')
             entry.insert(0, f"{slider.get():.2f}")
@@ -295,22 +372,22 @@ for symptom in symptom_list:
             entry.configure(placeholder_text="CF (e.g. 0.50)")  # Set placeholder text
     
     # Bind the slider to the update function
-    slider.bind("<ButtonRelease-1>", lambda event, symptom=symptom, slider=slider, entry=entry, var=var: update_entry(symptom, slider, entry, var))
+    slider.bind("<ButtonRelease-1>", lambda event, trait=trait, slider=slider, entry=entry, var=var: update_entry(trait, slider, entry, var))
 
-# Diagnose and Clear buttons
+# Create buttons for suggesting jobs and clearing selections
 button_frame = ctk.CTkFrame(window)
 button_frame.pack(pady=20)
 
-# Use grid for better control
-ctk.CTkButton(button_frame, text="Diagnose", command=diagnose).grid(row=0, column=0, padx=(5, 2.5), pady=5)
+# Use grid layout for better control of button placement
+ctk.CTkButton(button_frame, text="Suggest Job", command=suggest_job).grid(row=0, column=0, padx=(5, 2.5), pady=5)
 ctk.CTkButton(button_frame, text="Clear", command=clear_selection).grid(row=0, column=1, padx=(2.5, 2.5))
 ctk.CTkButton(button_frame, text="?", command=show_help, width=30).grid(row=0, column=2, padx=(2.5, 5))
 
-# Clickable text for showing more results
+# Create a clickable label for showing more detailed results
 clickable_text = ctk.CTkLabel(window, text="", text_color="white", cursor="hand2", font=("Arial", 12, "underline"))
-clickable_text.bind("<Button-1>", show_detailed_results)  # Bind left mouse button click
+clickable_text.bind("<Button-1>", show_detailed_results)  # Bind left mouse button click to the function
 
-# Result label
+# Label to display the result of the job suggestion
 result_label = ctk.CTkLabel(window, text="", font=("Arial", 12), justify="left")
 result_label.pack(padx=10, pady=10)
 
