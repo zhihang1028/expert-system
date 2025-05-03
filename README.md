@@ -1,42 +1,16 @@
 # Rule-Based Expert System using Certainty Factor
 
 ## Overview
-This project uses a rule-based expert system that diagnoses potential health conditions based on user-reported symptoms. The system uses certainty factors to evaluate the likelihood of various conditions. Thus, providing users with a diagnosis based on their input.
-
-## Features
-- Rule-based diagnosis using certainty factors.
-- Input for symptoms.
-- Calculates and displays the most likely condition based on user symptoms.
-
-## How It Works
-The system defines a set of rules for different diseases, each associated with specific symptoms and their corresponding certainty factors. Users can input their symptoms, and the system calculates the certainty factor for each potential diagnosis.
-
-## Code Explanation
-1. **Define Rules**: The system defines rules for various conditions (e.g., Cold, Flu, Allergy) along with their associated symptoms and certainty factors.
-2. **Collect User Symptoms**: The program prompts the user to enter symptoms one by one until they type 'done'.
-3. **Calculate Certainty Factor**: The `calculate_cf` function computes the certainty factor for each disease based on the user's symptoms.
-4. **Diagnose**: The system evaluates all diseases and sorts them based on their certainty factors.
-5. **Display Results**: The program displays the diagnosis results and suggests the most likely condition.
+This project is a Job Suggestion Expert System built using Python and the `customtkinter` library. The system suggests suitable job roles based on user-defined skills and their confidence levels. It uses a set of predefined rules and conditions to evaluate the best job matches (currently only for engineering jobs).
+![Job Suggestion System Screenshot](images/screenshot.png)
 
 ## Usage
-- Run the program and enter your symptoms one by one.
-- Type 'done' when you have finished entering symptoms.
-- The system will calculate and display the most likely condition based on the input symptoms.
-- Example:
-```
-Enter your symptoms one by one. Type 'done' when finished.
-Symptom: cough
-Symptom: sneezing
-Symptom: done
-
-Diagnosis Results:
-Flu: CF = 0.5
-Cold: CF = 0.6
-Allergy: CF = 0.0
-
-Most likely condition: Cold with confidence 0.6
-```
+- **Select Skills**: Check the boxes next to the skills.
+- **Set Confidence Levels**: Use the sliders or input fields to set the confidence level for each selected skill (from 0 to 1).
+- **Suggest Job**: Click the "Suggest Job" button to get the most suitable job based on the input.
+- **View Detailed Results**: Click on the "Show More" link to see detailed results for all the job suggestions.
+- **Clear Selections**: Use the "Clear" button to reset the selections
 
 ## Acknowledgments
-- The concept of certainty factors and rule-based systems from artificial intelligence literature.
-- ChatGPT for assistance in project documentation and code explanations.
+- Thanks to the creators of customtkinter for providing a great library for building custom GUI applications in Python.
+- Special thanks to ChatGPT for the documentation, explanations, and code writing.
