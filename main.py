@@ -1,57 +1,52 @@
 import customtkinter as ctk
 
-# Define the rules with certainty factors for various traits related to jobs
+# define rules (easy to add new in the future)
 rules = {
-    'Mechanical Engineer': [
-        ('mechanical skills', 0.9),
-        ('problem solving', 0.8),
-        ('creativity', 0.7),
-        ('attention to detail', 0.6)
-    ],
-    'Software Engineer': [
-        ('programming', 0.9),
-        ('problem solving', 0.9),
-        ('creativity', 0.8),
-        ('collaboration', 0.7)
-    ],
-    'Electrical Engineer': [
-        ('circuit design', 0.9),
-        ('analytical thinking', 0.8),
-        ('problem solving', 0.8),
-        ('teamwork', 0.7)
+    'Mechatronics Engineer': [
+        ('robotics', 0.9),
+        ('hands-on work', 0.85),
+        ('control systems', 0.8),
+        ('electronics', 0.85),
+        ('outdoors', -0.5)
     ],
     'Civil Engineer': [
         ('project management', 0.8),
+        ('outdoors', 0.7),
+        ('analytical skills', 0.6),
+        ('teamwork', -0.4)
+    ],
+    'Software Engineer': [
+        ('programming', 0.9),
         ('problem solving', 0.8),
-        ('creativity', 0.7),
-        ('communication', 0.6)
+        ('teamwork', 0.6),
+        ('long-term projects', -0.3)
+    ],
+    'Mechanical Engineer': [
+        ('thermodynamics', 0.8),
+        ('hands-on work', 0.8),
+        ('math skills', 0.6),
+        ('office work', -0.4)
+    ],
+    'Electrical Engineer': [
+        ('circuit design', 0.9),
+        ('power systems', 0.8),
+        ('electronics', 0.7),
+        ('complex systems', -0.5)
     ],
     'Chemical Engineer': [
-        ('chemical analysis', 0.9),
-        ('problem solving', 0.8),
-        ('teamwork', 0.7),
-        ('attention to detail', 0.6)
-    ],
-    'Mechatronics Engineer': [
-        ('programming', 0.9),
-        ('mechanical skills', 0.9),
-        ('problem solving', 0.8),
-        ('creativity', 0.7),
-        ('circuit design', 0.8)
-    ],
-    'Environmental Engineer': [
-        ('environmental science', 0.9),
-        ('problem solving', 0.8),
-        ('analytical thinking', 0.7),
-        ('communication', 0.6)
+        ('chemistry', 0.9),
+        ('lab work', 0.8),
+        ('analytical skills', 0.7),
+        #('hazardous materials', -0.4)
     ]
 }
 
-# Define conditions for each job
+
+# define conditions and/or (also easier to add new in the future)
 conditions = {
     'Mechatronics Engineer': {
-        'and': ['mechanical skills', 'programming'],
-        'or': ['creativity', 'teamwork']
+        'and': ['hands-on work', 'electronics'],
+        'or': ['control systems', 'robotics']
     },
 }
 
@@ -60,336 +55,349 @@ def combine_cf(job, user_skills):
     for skill, user_cf in user_skills:
         for rule_trait, rule_cf in rules[job]:
             if skill == rule_trait:
-                adjusted_cf = user_cf * rule_cf
-                total_cf += adjusted_cf * (1 - total_cf)  # applying the certainty factor combination formula
+                adjusted_cf = user_cf * rule_cf # multiply user cf with internal cf
+
+                # applying the certainty factor formula for all three cases
+                if total_cf >= 0 and adjusted_cf >= 0:
+                    total_cf += adjusted_cf * (1 - total_cf)
+                elif total_cf < 0 and adjusted_cf < 0:
+                    total_cf += adjusted_cf * (1 + total_cf)
+                elif total_cf < 0 or adjusted_cf < 0:
+                    total_cf = (total_cf + adjusted_cf) / (1 - min(abs(total_cf), abs(adjusted_cf)))
+                    
     return total_cf
 
-# Function to calculate the certainty factor for each job
 def calculate_cf(job, user_skills):
     total_cf = 0
-    if job in conditions:
+    if job in conditions:   # if the job is inside the condition dictionary (and/or)
         job_conditions = conditions[job]
+        skills_cond = user_skills.copy()    # so that it wont alter the original list
 
-        # Handle "and" conditions
         if 'and' in job_conditions:
-            and_cf = calculate_and_cf(user_skills, job_conditions['and'])
-            user_skills.append(and_cf)  # add the minimum cf value (and)
+            and_cf = calculate_and_cf(skills_cond, job_conditions['and'])   # compare and get the min value
+            skills_cond.append(and_cf)  # add the min cf value (and) into the list
 
-            for trait in conditions[job]['and']:    # remove both cf values (and)
-                for i in range(len(user_skills)):
-                    if user_skills[i][0] == trait:
-                        user_skills.pop(i)
+            for trait in conditions[job]['and']:    # remove both cf values (and) from the list
+                for i in range(len(skills_cond)):
+                    if skills_cond[i][0] == trait:
+                        skills_cond.pop(i)
                         break
 
-            total_cf = combine_cf(job, user_skills)
-
-        # Handle "or" conditions
         if 'or' in job_conditions:
-            or_cf = calculate_or_cf(user_skills, job_conditions['or'])
-            user_skills.append(or_cf)
+            or_cf = calculate_or_cf(skills_cond, job_conditions['or'])  # now for max value (or)
+            skills_cond.append(or_cf)
 
             for trait in conditions[job]['or']:
-                for i in range(len(user_skills)):
-                    if user_skills[i][0] == trait:
-                        user_skills.pop(i)
+                for i in range(len(skills_cond)):
+                    if skills_cond[i][0] == trait:
+                        skills_cond.pop(i)
                         break
 
-            total_cf = combine_cf(job, user_skills)
+            total_cf = combine_cf(job, skills_cond) # combine all the cf values inside the skill list (for condition jobs only)
 
-    else:
-        # Normal calculation for other jobs
-        total_cf = combine_cf(job, user_skills)
+    else:  
+        total_cf = combine_cf(job, user_skills) # for jobs that are not in condition dict
 
     return round(total_cf, 3)
 
 def calculate_and_cf(user_skills, required_skills):
-    # Create a dictionary of skills and their confidence factors
-    skill_cfs = {skill: user_cf for skill, user_cf in user_skills if skill in required_skills}
-    if len(skill_cfs) == len(required_skills):  # All required skills are present
-        # Find the skill with the minimum confidence factor
-        min_skill = min(skill_cfs, key=skill_cfs.get)  # Get the skill with the minimum CF
-        return (min_skill, skill_cfs[min_skill])  # Return the skill and its CF as a tuple
-    return ("", 0)  # Return a tuple indicating incomplete skills
+    skill_cfs = {skill: user_cf for skill, user_cf in user_skills if skill in required_skills}  # create dict for cf and skills
+    if len(skill_cfs) == len(required_skills):  # check if all skills available (as in the and condition)
+        min_skill = min(skill_cfs, key=skill_cfs.get)  # compare and get min cf
+        return (min_skill, skill_cfs[min_skill])
+    return ("", 0)
 
 def calculate_or_cf(user_skills, optional_skills):
-    # Create a dictionary of skills and their confidence factors
     skill_cfs = {skill: user_cf for skill, user_cf in user_skills if skill in optional_skills}
-    if len(skill_cfs) == len(optional_skills):  # All required skills are present
-        # Find the skill with the maximum confidence factor
-        max_skill = max(skill_cfs, key=skill_cfs.get)  # Get the skill with the maximum CF
-        return (max_skill, skill_cfs[max_skill])  # Return the skill and its CF as a tuple
-    return ("", 0)  # Return a tuple indicating incomplete skills
 
-# Variable to track detailed results
+    if not skill_cfs:
+        return ("", 0)  # if no skills match (or)
+
+    if len(skill_cfs) == 1:
+        skill, cf = next(iter(skill_cfs.items()))  # if only 1 skill match then directly return the cf of the skill
+        return (skill, cf)
+        
+    max_skill = max(skill_cfs, key=skill_cfs.get)  # if multiple skill then compare and take max value
+    return (max_skill, skill_cfs[max_skill])
+
+# track detailed result
 detailed_results_shown = False
 detailed_results_text = ""
 
-# Function to handle the job suggestion process
+# after clicking suggest job button
 def suggest_job():
-    global detailed_results_text  # declare this variable as global
+    global detailed_results_text  # global variable
     user_traits = []
     for trait, var in trait_vars.items():
         if var.get() == 1:
-            cf = float(trait_sliders[trait].get())  # retrieve the value from the slider
+            cf = float(trait_sliders[trait].get())  # take value from slider
             user_traits.append((trait, cf))
 
     if not user_traits:
-        show_error_message("Please select at least one skill.")
+        show_error_message("Please select at least one preference/skill.")
         return
 
     results = {job: calculate_cf(job, user_traits) for job in rules}
     sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
 
-    # Identify the most likely job
+    # check for highest cf (suitable job)
     likely = sorted_results[0]
-    result_text = f"Most suitable job: {likely[0]} with confidence {likely[1]}\n"
+    if likely[1] <= 0.2:    # cf lower than (or equal) 0.2
+        show_error_message(f"CF value too low to suggest job (CF={likely[1]}).\nPlease brush up your skills and try again.")
+    else:
+        result_text = f"Most suitable job:\n{likely[0]} with confidence {likely[1]}\n"
 
-    # Prepare the detailed results text
-    detailed_results_text = "\n"
-    for job, cf in sorted_results:
-        detailed_results_text += f"{job}: CF = {cf}\n"
+        # loop through all jobs with cf
+        detailed_results_text = "\n"
+        for job, cf in sorted_results:
+            detailed_results_text += f"{job}: CF = {cf}\n"
 
-    # Display only the most likely job initially
-    result_label.configure(text=result_text)
-    result_label.pack(pady=0)
-    clickable_text.configure(text="Show More")  # set initial text for the clickable
-    clickable_text.pack(pady=5)  # display the clickable text
-
-# Function to show an error message in a new window
-def show_error_message(message):
+        # only display most suitable job
+        result_label.configure(text=result_text)
+        result_label.pack(pady=0)
+        clickable_text.configure(text="Show More")
+        clickable_text.pack(pady=(0, 10))  # display the clickable text
+    
+def show_error_message(message):    # pop out error window
     error_window = ctk.CTk()
     error_window.title("Warning")
-    error_window.geometry("300x150")
+    error_window.geometry("340x140")
 
-    # Create a label to display the error message
     error_label = ctk.CTkLabel(error_window, text=message, font=("Arial", 12), justify="center")
     error_label.pack(pady=20)
 
-    # Create a button to close the error window
     close_button = ctk.CTkButton(error_window, text="Close", command=error_window.destroy)
     close_button.pack(pady=5)
 
     error_window.mainloop()
 
-# Function to clear all selections
+# when pressing clear button
 def clear_selection():
-    for var in trait_vars.values():
+    for var in trait_vars.values(): # reset checkbox
         var.set(0)
-    # Shift focus away from the entry field
-    button_frame.focus_set()
-    for entry in trait_entries.values():
+    
+    button_frame.focus_set()    # shift focus away from entry before reseting (prevent bug)
+
+    for entry in trait_entries.values():    # reset entry
         entry.configure(state='normal')
         entry.delete(0, 'end')
         entry.configure(placeholder_text="CF (e.g. 0.50)")
         entry.configure(state='disabled')
-    for trait, slider in trait_sliders.items():
-        slider.set(0.5)
+
+    for trait, slider in trait_sliders.items(): # reset slider
+        slider.set(0)
         slider.configure(state="disabled")
-    result_label.configure(text="")
+
+    result_label.configure(text="") # clear result section text
     clickable_text.configure(text="")
 
-# Function to show detailed results when clicked
+# after clicking show more
 def show_detailed_results(event=None):
-    detailed_window = ctk.CTk()  # Create a new window for detailed results
+    detailed_window = ctk.CTk()
     detailed_window.title("Detailed Job Suggestion Results")
     detailed_window.geometry("300x350")
 
     ctk.CTkLabel(detailed_window, text="Job Suggestion Results:", font=("Arial", 12)).pack(anchor='center', padx=10, pady=(20, 0))
 
-    # Create a frame for the background
-    frame = ctk.CTkFrame(detailed_window)
+    frame = ctk.CTkFrame(detailed_window)   # add gray frame
     frame.pack(padx=10, pady=0)
 
-    # Create a label to display detailed results
-    detailed_label = ctk.CTkLabel(frame, text=detailed_results_text, justify="left")
+    detailed_label = ctk.CTkLabel(frame, text=detailed_results_text, justify="left")    # display all job cf values
     detailed_label.pack(padx=10, pady=0, fill="both", expand=True)
 
-    # Button to close the detailed results window
     close_button = ctk.CTkButton(detailed_window, text="Close", command=detailed_window.destroy)
     close_button.pack(pady=15)
 
     detailed_window.mainloop()
 
-# Function to show help information with multiple pages
+# after clicking ? button
 def show_help():
-    help_window = ctk.CTk()  # Create a new window for help
+    help_window = ctk.CTk()
     help_window.title("Help")
-    help_window.geometry("400x300")
+    help_window.geometry("410x300")
 
-    # List of help pages
+    # help pages list
     help_pages = [
-        "This is a job suggestion expert system.\n\n"
-        "1. Select your skills from the list.\n"
-        "2. Adjust the confidence levels using the sliders\n"
-        "   from 0 (Definitely No) to 1 (Definitely Yes).\n"
-        "3. Click 'Suggest Job' to get the most suitable job.\n"
-        "4. Use 'Clear' to reset your selections.",
+        "Welcome to the Job Suggestion Expert System!\n\n"
+        "This system helps you find suitable job recommendations based on your preferences/skills and confidence levels.\n\n"
+        "Follow these steps to get started:\n"
+        "1. Select your preferences from the provided list.\n"
+        "2. Adjust the confidence levels using the sliders.\n"
+        "3. Click 'Suggest Job' to receive the most appropriate job suggestions.\n"
+        "4. Use the 'Clear' button to reset your selections and start over.",
         
-        "Tips for using the system:\n\n"
-        "1. Make sure to select at least one skill.\n"
-        "2. You can enter confidence factors manually or use the sliders.\n"
-        "3. The system will suggest jobs based on your input.\n"
-        "4. Once searching job, click 'Show More' to see detailed results.",
+        "Tips for Using the System:\n\n"
+        "1. Ensure you select at least one preference to receive job suggestions.\n"
+        "2. You can manually enter certainty factors or adjust them using the sliders.\n"
+        "3. The system generates job suggestions based on your selected skills and confidence levels.\n"
+        "4. After receiving suggestions, click 'Show More' to view detailed CF values for each job.",
         
-        "For further assistance:\n\n"
-        "1. Contact support at support@example.com.\n"
-        "2. Visit our website for more resources.\n"
-        "3. Follow us on social media for updates."
-    ]
+        "Understanding Certainty Factors (CF):\n\n"
+        "Inputs\n"
+        "1. Positive CF values indicate strong preferences or that you have acquired the skill.\n"
+        "2. Negative CF values indicate disagreement or that you have not acquired the skill.\n"
+        "3. A CF of 0 (or sometimes between -0.2 and 0.2) means uncertainty.\n\n"
+        "Results\n"
+        "1. Positive CF values in your results indicate a strong belief match for the job, suggesting you are well-suited for it.\n"
+        "2. Negative CF values in your results indicate a mismatch, suggesting that the job may not be suitable for you.\n",
+        
+        "Job Descriptions:\n\n"
+        "Mechatronics Engineer: Combines mechanical, electronic, and software engineering to design and create smart machines.\n\n"
+        "Civil Engineer: Plans, designs, and oversees construction projects, focusing on infrastructure and public works.\n\n"
+        "Software Engineer: Develops software applications, requiring strong programming and problem-solving skills.\n\n"
+        "Mechanical Engineer: Works on the design and manufacturing of mechanical systems, utilizing principles of physics and materials science.\n\n"
+        "Electrical Engineer: Designs and develops electrical systems and components, including power generation and distribution.\n\n"
+        "Chemical Engineer: Applies principles of chemistry and engineering to develop processes for producing chemicals and materials."
+        ]
 
-    current_page = 0  # Track the current page index
+    current_page = 0  # track page index
 
-    # Function to update the help content
     def update_help_content():
-        help_label.configure(text=help_pages[current_page])
+        help_text.delete(1.0, ctk.END)  # clear text
+        help_text.insert(ctk.END, help_pages[current_page])  # insert new text
         prev_button.configure(state="normal" if current_page > 0 else "disabled")
         next_button.configure(state="normal" if current_page < len(help_pages) - 1 else "disabled")
+    
+    # scrollable text box
+    help_text = ctk.CTkTextbox(help_window, wrap="word", width=380, height=200)
+    help_text.grid(row=0, column=0, columnspan=5, padx=10, pady=10, sticky="nsew")  # use sticky to fill space
 
-    # Create a label to display help content
-    help_label = ctk.CTkLabel(help_window, text="", justify="left")
-    help_label.pack(padx=10, pady=10)
+    prev_button = ctk.CTkButton(help_window, text="<", width=30, command=lambda: change_page(-1))
+    prev_button.grid(row=1, column=1, padx=(100, 2.5), pady=5, sticky="e")  # slign to right (east)
 
-    # Create Previous and Next buttons
-    prev_button = ctk.CTkButton(help_window, text="Previous", command=lambda: change_page(-1))
-    prev_button.pack(side="left", padx=(10, 5), pady=10)
+    close_button = ctk.CTkButton(help_window, text="Close", command=help_window.destroy)
+    close_button.grid(row=1, column=2, padx=(2.5, 2.5), pady=5)
 
-    next_button = ctk.CTkButton(help_window, text="Next", command=lambda: change_page(1))
-    next_button.pack(side="right", padx=(5, 10), pady=10)
+    next_button = ctk.CTkButton(help_window, text=">", width=30, command=lambda: change_page(1))
+    next_button.grid(row=1, column=3, padx=(2.5, 100), pady=5, sticky="w")  # align to left (west)
 
-    # Function to change the page
+    # change page
     def change_page(direction):
         nonlocal current_page
         current_page += direction
         update_help_content()
 
-    # Initialize the help content
+    # initialise help content
     update_help_content()
+    
+    help_window.mainloop()
 
-    # Button to close the help window
-    close_button = ctk.CTkButton(help_window, text="Close", command=help_window.destroy)
-    close_button.pack(pady=10)
-
-    help_window.mainloop()  # Start the event loop for the help window
-
-# Create the main application window
+# create main application window
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 window = ctk.CTk()
-window.title("Job Suggestion Expert System")
+window.title("EEM348 Job Suggestion Expert System") # window title
 window.geometry("400x600")
 
-# Title label for the application
+# main text
 title_label = ctk.CTkLabel(window, text="Job Suggestion Expert System", font=("Arial", 16, "bold"))
 title_label.pack(pady=20)
 
-# Instruction label for user guidance
-ctk.CTkLabel(window, text="Select your skills and enter confidence levels:", font=("Arial", 14)).pack(anchor='w', padx=10, pady=(20, 0))
+ctk.CTkLabel(window, text="Select your preferences/skills and enter confidence levels:", font=("Arial", 14)).pack(anchor='w', padx=10, pady=(20, 0))
 
-# Create a scrollable frame for trait selection
+# scrollable frame for preferences/skills selection
 scrollable_frame = ctk.CTkScrollableFrame(window)
 scrollable_frame.pack(pady=10, fill="both", expand=True)
 
-# Dictionaries to hold trait variables, sliders, and entries
-trait_vars = {}
-trait_sliders = {}
-trait_entries = {}
-trait_list = [
-    'mechanical skills', 'programming', 'circuit design', 
-    'project management', 'chemical analysis', 
-    'environmental science', 
-    'problem solving', 'creativity', 'teamwork', 
-    'communication', 'analytical thinking', 'attention to detail'
+# dictionaries to hold values
+trait_vars = {} # tickbox
+trait_sliders = {}  # slider
+trait_entries = {}  # entry
+trait_list = [  # preferences/skills
+    'robotics', 'hands-on work', 'control systems', 'electronics',
+    'project management', 'outdoors', 'analytical skills',
+    'teamwork', 'programming', 'problem solving', 'long-term projects',
+    'thermodynamics', 'math skills', 'office work', 'circuit design', 'power systems',
+    'complex systems', 'chemistry', 'lab work'
 ]
 
-# Function to enable or disable the slider based on the checkbox state
+# enable or disable the slider based on the tickbox state
 def toggle_slider(trait, var):
-    slider = trait_sliders.get(trait)  # Retrieve the slider for the trait
-    entry = trait_entries.get(trait)  # Retrieve the entry for the trait
-    if slider:  # Check if the slider exists
-        if var.get() == 1:  # If the checkbox is checked
-            slider.configure(state='normal')  # Enable the slider
-            entry.configure(state='normal')  # Enable the entry
-            entry.configure(text_color="white")  # Reset text color to normal
-        else:  # If the checkbox is unchecked
-            slider.configure(state='disabled')  # Disable the slider
-            entry.configure(text_color="darkgray") 
-            entry.configure(state='disabled')  # Disable the entry field
+    slider = trait_sliders.get(trait)  # get slider value
+    entry = trait_entries.get(trait)  # get entry value
+    if slider:  # if slider exists
+        if var.get() == 1:  # if tickbox checked by user
+            slider.configure(state='normal')  # enable slider (unlock)
+            entry.configure(state='normal')  # enable entry
+            entry.configure(text_color="white")  # reset text colour
+        else:  # if tickbox unchecked by user (still preserve the value without clearing it)
+            slider.configure(state='disabled')  # disable slider (lock)
+            entry.configure(text_color="darkgray") # set text colour (grayout)
+            entry.configure(state='disabled')  # disable entry
 
-# Loop through the trait list to create checkboxes, sliders, and entries
+# loop through all the preferences to create tickbox, slider, and entry
 for trait in trait_list:
-    var = ctk.IntVar()
+    var = ctk.IntVar()  # tickbox
     cb = ctk.CTkCheckBox(scrollable_frame, text=trait.capitalize(), variable=var,
                           command=lambda trait=trait, var=var: toggle_slider(trait, var))
     cb.pack(anchor='w', padx=20, pady=5)
     trait_vars[trait] = var
 
-    # Create a slider for the confidence factor
-    slider = ctk.CTkSlider(scrollable_frame, from_=0, to=1, number_of_steps=100, state='disabled')  # Start disabled
+    # create slider
+    slider = ctk.CTkSlider(scrollable_frame, from_=-1, to=1, number_of_steps=100, state='disabled')  # lock slider by default
     slider.pack(anchor='w', padx=20, pady=5)
-    trait_sliders[trait] = slider  # Store the slider in the dictionary
+    trait_sliders[trait] = slider  # store slider in dictionary
 
-    # Create an entry for manual input of the confidence factor
-    entry = ctk.CTkEntry(scrollable_frame, placeholder_text="CF (e.g. 0.50)")
+    # create entry
+    entry = ctk.CTkEntry(scrollable_frame, placeholder_text="CF (e.g. 0.50)")   # set placeholder text before locking entry
     entry.pack(anchor='w', padx=20, pady=5)
-    entry.configure(state='disabled')
-    trait_entries[trait] = entry
+    entry.configure(state='disabled')   # lock entry by default
+    trait_entries[trait] = entry # store to dict
 
-    # Update the slider when the entry is changed
+    # update slider according to entry
     def update_slider_from_entry(event, trait=trait, entry=entry, slider=slider, var=var):
-        if var.get() == 1:  # If the checkbox is checked
+        if var.get() == 1:  # if tickbox checked
             try:
                 value = float(entry.get())
-                if 0 <= value <= 1:
+                if -1 <= value <= 1:    # make sure entry value in bound
                     slider.set(value)
-                elif value > 1:
+                elif value > 1: # if user enter value larger than 1 then autoset back to 1
                     entry.delete(0, 'end')
                     entry.insert(0, "1")
                     slider.set(1)
-                else:
+                else:   # if user enter value smaller than -1 then autoset back to -1
                     entry.delete(0, 'end')
-                    entry.insert(0, "0")
-                    slider.set(0)
-            except ValueError:
-                button_frame.focus_set()
+                    entry.insert(0, "-1")
+                    slider.set(-1)
+            except ValueError:  # handle other error
+                button_frame.focus_set()    # move away focus before clearing entry
                 entry.delete(0, 'end')
-                entry.configure(placeholder_text="CF (e.g. 0.50)")
-        else:  # If the checkbox is not checked
-            button_frame.focus_set()
-            entry.delete(0, 'end')  # Clear the entry
-            entry.configure(placeholder_text="CF (e.g. 0.50)")  # Set placeholder text
+                entry.configure(placeholder_text="CF (e.g. 0.50)")  # reset placeholder text
+        else:  # if tickbox not checked
+            button_frame.focus_set()    # move away the focus from entry
+            entry.delete(0, 'end')  #  clear entry
+            entry.configure(placeholder_text="CF (e.g. 0.50)")
 
-    # Bind the entry to the update function
+    # bind entry to slider after pressing enter
     entry.bind("<Return>", update_slider_from_entry)
 
-    # Update the entry when the slider is moved
+    # update entry with slider
     def update_entry(trait=trait, slider=slider, entry=entry, var=var):
-        if var.get() == 1:  # Only update if the checkbox is checked
+        if var.get() == 1:  # only update if tickbox is checked
             entry.delete(0, 'end')
             entry.insert(0, f"{slider.get():.2f}")
         else:
-            entry.delete(0, 'end')  # Clear the entry if the checkbox is not checked
-            entry.configure(placeholder_text="CF (e.g. 0.50)")  # Set placeholder text
+            entry.delete(0, 'end')  # clear entry
+            entry.configure(placeholder_text="CF (e.g. 0.50)")  # reset placeholder text
     
-    # Bind the slider to the update function
+    # bind slider entry (after clicking/dragging the slider)
     slider.bind("<ButtonRelease-1>", lambda event, trait=trait, slider=slider, entry=entry, var=var: update_entry(trait, slider, entry, var))
 
-# Create buttons for suggesting jobs and clearing selections
+# button setup
 button_frame = ctk.CTkFrame(window)
 button_frame.pack(pady=20)
 
-# Use grid layout for better control of button placement
 ctk.CTkButton(button_frame, text="Suggest Job", command=suggest_job).grid(row=0, column=0, padx=(5, 2.5), pady=5)
 ctk.CTkButton(button_frame, text="Clear", command=clear_selection).grid(row=0, column=1, padx=(2.5, 2.5))
 ctk.CTkButton(button_frame, text="?", command=show_help, width=30).grid(row=0, column=2, padx=(2.5, 5))
 
-# Create a clickable label for showing more detailed results
+# show more clickable text
 clickable_text = ctk.CTkLabel(window, text="", text_color="white", cursor="hand2", font=("Arial", 12, "underline"))
 clickable_text.bind("<Button-1>", show_detailed_results)  # Bind left mouse button click to the function
 
-# Label to display the result of the job suggestion
 result_label = ctk.CTkLabel(window, text="", font=("Arial", 12), justify="left")
 result_label.pack(padx=10, pady=10)
 
-# Start the GUI event loop
+# start gui loop
 window.mainloop()
